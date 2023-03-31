@@ -1,0 +1,70 @@
+# Define a estrutura de dados para armazenar as informações de venda de gasolina
+vendas_gasolina = {
+    "Gabriel": {
+        "Gasolina Comum": 1000,
+        "Gasolina Aditivada": 500,
+    },
+    "Ana": {
+        "Gasolina Comum": 2000,
+        "Gasolina Aditivada": 1000,
+    },
+    "Diego": {
+        "Gasolina Comum": 1500,
+        "Gasolina Aditivada": 700,
+    },
+}
+vendas_etanol = {
+    "Gabriel": {
+        "Etanol Comum": 1000,
+        "Etanol Aditivado": 200,
+    },
+    "Ana": {
+        "Etanol Comum": 500,
+        "Etanol Aditivado": 1000,
+    },
+    "Diego": {
+        "Etanol Comum": 800,
+        "Etanol Aditivado": 500,
+    },
+}
+
+# Define uma função para calcular a média ponderada de vendas de gasolina
+def calcular_media_ponderadaGasolina(nome):
+    try:
+        vendasG = vendas_gasolina[nome]
+        soma_vendas = vendasG["Gasolina Comum"] + vendasG["Gasolina Aditivada"]
+        media_ponderadaG = 100 * vendasG["Gasolina Aditivada"] / soma_vendas
+        return media_ponderadaG
+    except KeyError:
+        print("Funcionário não encontrado")
+        return None
+def calcular_media_ponderadaEtanol(nome):
+    try:
+        vendasE = vendas_etanol[nome]
+        soma_vendas = vendasE["Etanol Comum"] + vendasE["Etanol Aditivado"]
+        media_ponderadaE = 100 * vendasE["Etanol Aditivado"] / soma_vendas
+        return media_ponderadaE
+    except KeyError:
+        print("Funcionario não encontrado")
+        return None
+
+# Lê o nome do funcionário do usuário e mostra as informações de vendas de gasolina e a média ponderada
+nome = input("Digite o nome do funcionário para ver a quantidade de gasolina vendida: ")
+media_ponderadaG = calcular_media_ponderadaGasolina(nome)
+media_ponderadaE = calcular_media_ponderadaEtanol(nome)
+if media_ponderadaG is not None:
+    if media_ponderadaE is not None:
+        vendasG = vendas_gasolina[nome]
+        vendasE = vendas_etanol[nome]
+        gasolina_comum = vendasG["Gasolina Comum"]
+        gasolina_aditivada = vendasG["Gasolina Aditivada"]
+        etanol_comum = vendasE["Etanol Comum"]
+        etanol_aditivado = vendasE["Etanol Aditivado"]
+        print("Nome:", nome)
+        print("Gasolina comum:", gasolina_comum)
+        print("Gasolina aditivada:", gasolina_aditivada)
+        print("Média ponderada Gasolina:", media_ponderadaG, "%")
+        print("--------------------------------")
+        print("Etanol comum:", etanol_comum)
+        print("Etanol aditivado:", etanol_aditivado)
+        print("Média ponderada Etanol:", media_ponderadaE, "%")
