@@ -1,0 +1,55 @@
+matrizGasolina = [] #adiciona uma matriz para armazenar os dados contidos
+while True:#Coleta os nomes dos funcionarios
+    nome = input("Digite o nome do funcionário (ou 'fim' para encerrar): ")
+    if nome.lower() == "fim":
+        break
+    #coleta a informação do tanto de gasolina e etanol vendida pelo funcionario
+    gasolinaComum = float(input("Digite a quantidade de gasolina comum vendida pelo funcionário: "))
+    gasolinaAditivada = float(input("Digite a quantidade de gasolina aditivada vendida pelo funcionário: "))
+    etanolComum = float(input("Digite a quantidade de Etanol comum vendida pelo funcionario: "))
+    etanolAditivada = float(input("Digite a quantidade de Etanol aditivada vendida pelo funcionario: "))
+    matrizFuncionarios = [nome, gasolinaComum, gasolinaAditivada, etanolComum, etanolAditivada] #Adiciona todas as informações coletadas em uma lista
+    matrizGasolina.append(matrizFuncionarios)#Adiciona a lista a matriz
+#Forma de acessar os dados coletados na matriz
+for funcionario in matrizGasolina:
+    nome = funcionario[0]
+    gasolina_comum = funcionario[1]
+    gasolina_aditivada = funcionario[2]
+    etanol_comum = funcionario[3]
+    etanol_aditivado = funcionario[4]
+    vendas_gasolina = {
+        "Gasolina Comum": gasolina_comum,
+        "Gasolina Aditivada": gasolina_aditivada,
+    }
+    vendas_etanol = {
+        "Etanol Comum": etanol_comum,
+        "Etanol Aditivado": etanol_aditivado,
+    }
+
+    # Define uma função para calcular a média ponderada de vendas de gasolina
+    def calcular_media_ponderadaGasolina():
+        try:
+            soma_vendas = vendas_gasolina["Gasolina Comum"] + vendas_gasolina["Gasolina Aditivada"]
+            media_ponderadaG = 100 * vendas_gasolina["Gasolina Aditivada"] / soma_vendas
+            return media_ponderadaG
+        except ZeroDivisionError:
+            return 0
+
+    # Define uma função para calcular a média ponderada de vendas de etanol
+    def calcular_media_ponderadaEtanol():
+        try:
+            soma_vendas = vendas_etanol["Etanol Comum"] + vendas_etanol["Etanol Aditivado"]
+            media_ponderadaE = 100 * vendas_etanol["Etanol Aditivado"] / soma_vendas
+            return media_ponderadaE
+        except ZeroDivisionError:
+            return 0
+
+    # Mostra as informações de vendas de gasolina e a média ponderada
+    print("Nome:", nome)
+    print("Gasolina comum:", gasolina_comum)
+    print("Gasolina aditivada:", gasolina_aditivada)
+    print("MIX GASOLINA:", calcular_media_ponderadaGasolina(), "%")
+    print("Etanol comum:", etanol_comum)
+    print("Etanol aditivado:", etanol_aditivado)
+    print("MIX ETANOL:", calcular_media_ponderadaEtanol(), "%")
+    print("===================================================")
