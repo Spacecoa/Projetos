@@ -1,0 +1,10 @@
+matrizGasolina = []
+while True:
+    nome = input(("Digite o nome do funcionario(ou 'fim' para encerrar): "))
+    if nome.lower() == "fim":
+        break
+    gasolinaComum = float(input("Digite a quantidade de gasolina comum vendida pelo funcionario: "))
+    gasolinaAditivada = float(input("Digite a quantidade de gasolina aditivada vendida pelo funcionario: "))
+    matrizFuncionarios = [nome, gasolinaComum, gasolinaAditivada]
+    matrizGasolina.append(matrizFuncionarios)
+print(matrizGasolina)
