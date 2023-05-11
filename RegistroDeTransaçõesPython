@@ -1,0 +1,157 @@
+import sqlite3
+import tkinter as tk
+import re
+import tkinter.messagebox as messagebox
+
+class Transaction:
+    def __init__(self, date, type, amount, account, description):
+        self.date = date
+        self.type = type
+        self.amount = amount
+        self.account = account
+        self.description = description
+
+class TransactionManager:
+    def __init__(self):
+        self.conn = sqlite3.connect("transactions.db")
+        self.cursor = self.conn.cursor()
+
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                date TEXT,
+                type TEXT,
+                amount INT,
+                account TEXT,
+                description TEXT
+            )
+        """)
+        self.conn.commit()
+
+    def add_transaction(self, transaction):
+        self.cursor.execute("INSERT INTO transactions VALUES (?, ?, ?, ?, ?)", (
+            transaction.date,
+            transaction.type,
+            transaction.amount,
+            transaction.account,
+            transaction.description
+        ))
+        self.conn.commit()
+
+    def get_all_transactions(self):
+        self.cursor.execute("SELECT * FROM transactions")
+        rows = self.cursor.fetchall()
+
+        transactions = []
+        for row in rows:
+            transaction = Transaction(row[0], row[1], row[2], row[3], row[4])
+            transactions.append(transaction)
+
+        return transactions
+
+class App:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Registro de Transações")
+
+        # criar widgets da interface gráfica
+        self.label_date = tk.Label(master, text="Data")
+        self.label_date.grid(row=0, column=0)
+
+        self.label_type = tk.Label(master, text="Tipo de transação")
+        self.label_type.grid(row=1, column=0)
+
+        self.label_amount = tk.Label(master, text="Valor")
+        self.label_amount.grid(row=2, column=0)
+
+        self.label_account = tk.Label(master, text="Remetente")
+        self.label_account.grid(row=3, column=0)
+
+        self.label_description = tk.Label(master, text="Descrição")
+        self.label_description.grid(row=4, column=0)
+
+        self.entry_date = tk.Entry(master)
+        self.entry_date.grid(row=0, column=1)
+
+        self.entry_type = tk.Entry(master)
+        self.entry_type.grid(row=1, column=1)
+
+        self.entry_amount = tk.Entry(master)
+        self.entry_amount.grid(row=2, column=1)
+
+        self.entry_account = tk.Entry(master)
+        self.entry_account.grid(row=3, column=1)
+
+        self.entry_description = tk.Entry(master)
+        self.entry_description.grid(row=4, column=1)
+
+        self.button_add = tk.Button(master, text="Adicionar", command=self.add_transaction)
+        self.button_add.grid(row=5, column=1)
+
+        self.button_view = tk.Button(master, text="Ver todas as transações", command=self.view_transactions)
+        self.button_view.grid(row=6, column=1)
+
+        self.button_reset = tk.Button(master, text="Reiniciar", command=self.reset_fields)
+        self.button_reset.grid(row=5, column=0)
+
+        self.text_transactions = tk.Text(master, width=100, height=15)
+        self.text_transactions.grid(row=7, column=0, columnspan=2)
+
+        self.transaction_manager = TransactionManager()
+
+    def is_valid_amount(self, amount):
+        try:
+            int(amount)
+            return True
+        except ValueError:
+            return False
+
+    def is_valid_date(self, date):
+        pattern = re.compile(r"\d{2}/\d{2}/\d{4}")
+        return bool(pattern.fullmatch(date))
+
+
+    def add_transaction(self):
+        # obter informações da transação a partir da interface gráfica
+        date = self.entry_date.get()
+        type = self.entry_type.get()
+        amount = self.entry_amount.get()
+        account = self.entry_account.get()
+        description = self.entry_description.get()
+
+        #validar entrada de dados
+        if not self.is_valid_date(date):
+            messagebox.showerror("Erro", "Data inválida. Use o formato dd/mm/aaaa.")
+            return
+        if not self.is_valid_amount(amount):
+            messagebox.showerror("Erro", "Valor inválido. Insira somente números.")
+            return
+
+        # criar um objeto Transaction e adicionar ao banco de dados
+        transaction = Transaction(date, type, amount, account, description)
+        self.transaction_manager.add_transaction(transaction)
+
+        # limpar os campos de entrada após adicionar a transação
+        self.reset_fields()
+
+    def reset_fields(self):
+        self.entry_date.delete(0, tk.END)
+        self.entry_type.delete(0, tk.END)
+        self.entry_amount.delete(0, tk.END)
+        self.entry_account.delete(0, tk.END)
+        self.entry_description.delete(0, tk.END)
+
+    def view_transactions(self):
+        # obter todas as transações registradas no banco de dados
+        transactions = self.transaction_manager.get_all_transactions()
+
+        # exibir as transações na interface gráfica
+        self.text_transactions.delete(1.0, tk.END)
+        for transaction in transactions:
+            self.text_transactions.insert(tk.END,
+                                          f"{transaction.date} / {transaction.type} / {transaction.amount} / {transaction.account} / {transaction.description}\n")
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
