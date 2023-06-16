@@ -1,0 +1,111 @@
+import time
+import tkinter as tk
+from tkinter import messagebox
+
+timestamp = time.time()
+data_hora = time.ctime(timestamp)
+minhas_tarefas = []
+tarefas_realizadas = []
+
+def adicionar_tarefa():
+    tarefa = entry_tarefa.get()
+    data = entry_data.get()
+    hora = entry_hora.get()
+    if tarefa != "" and data != "" and hora != "":
+        tarefa_com_data_hora = f"{tarefa} (Data: {data}, Hora: {hora})"
+        minhas_tarefas.append(tarefa_com_data_hora)
+        listbox_tarefas.insert(tk.END, tarefa_com_data_hora)
+        entry_tarefa.delete(0, tk.END)
+        entry_data.delete(0, tk.END)
+        entry_hora.delete(0, tk.END)
+    else:
+        messagebox.showwarning("Campos Vazios", "Por favor, preencha todos os campos.")
+
+def deletar_tarefa():
+    index = listbox_tarefas.curselection()
+    if index:
+        tarefa_deletada = listbox_tarefas.get(index)
+        minhas_tarefas.remove(tarefa_deletada)
+        listbox_tarefas.delete(index)
+
+def tarefa_realizada():
+    index = listbox_tarefas.curselection()
+    if index:
+        tarefa_realizada = listbox_tarefas.get(index)
+        minhas_tarefas.remove(tarefa_realizada)
+        tarefas_realizadas.append(tarefa_realizada)
+        listbox_tarefas.delete(index)
+        listbox_tarefas_realizadas.insert(tk.END, tarefa_realizada)
+
+def verificar_tarefas():
+    agora = time.strftime("%Y-%m-%d %H:%M")
+    for tarefa in minhas_tarefas:
+        data_hora_tarefa = tarefa.split("(Data: ")[1].split(", Hora: ")[0]
+        hora_tarefa = tarefa.split("Hora: ")[1][:-1]
+        data_hora_tarefa_completa = f"{data_hora_tarefa} {hora_tarefa}"
+        if data_hora_tarefa_completa == agora:
+            messagebox.showinfo("Tarefa", f"É hora de fazer a seguinte tarefa:\n\n{tarefa}")
+
+# Configuração da janela principal
+window = tk.Tk()
+window.title("Aplicativo de Tarefas")
+
+# Frame para adicionar tarefa
+frame_adicionar = tk.Frame(window)
+frame_adicionar.pack(pady=10)
+
+label_tarefa = tk.Label(frame_adicionar, text="Tarefa:")
+label_tarefa.grid(row=0, column=0)
+
+entry_tarefa = tk.Entry(frame_adicionar, width=30)
+entry_tarefa.grid(row=0, column=1)
+
+label_data = tk.Label(frame_adicionar, text="Data:")
+label_data.grid(row=1, column=0)
+
+entry_data = tk.Entry(frame_adicionar, width=30)
+entry_data.grid(row=1, column=1)
+
+label_hora = tk.Label(frame_adicionar, text="Hora:")
+label_hora.grid(row=2, column=0)
+
+entry_hora = tk.Entry(frame_adicionar, width=30)
+entry_hora.grid(row=2, column=1)
+
+button_adicionar = tk.Button(frame_adicionar, text="Adicionar", command=adicionar_tarefa)
+button_adicionar.grid(row=3, column=0, columnspan=2)
+
+# Frame para lista de tarefas
+frame_tarefas = tk.Frame(window)
+frame_tarefas.pack(pady=10)
+
+label_tarefas = tk.Label(frame_tarefas, text="Minhas Tarefas:")
+label_tarefas.pack()
+
+listbox_tarefas = tk.Listbox(frame_tarefas, width=50)
+listbox_tarefas.pack()
+
+button_deletar = tk.Button(frame_tarefas, text="Deletar", command=deletar_tarefa)
+button_deletar.pack(side=tk.LEFT, padx=10)
+
+button_realizada = tk.Button(frame_tarefas, text="Tarefa Realizada", command=tarefa_realizada)
+button_realizada.pack(side=tk.LEFT)
+
+# Frame para lista de tarefas realizadas
+frame_tarefas_realizadas = tk.Frame(window)
+frame_tarefas_realizadas.pack(pady=10)
+
+label_tarefas_realizadas = tk.Label(frame_tarefas_realizadas, text="Tarefas Realizadas:")
+label_tarefas_realizadas.pack()
+
+listbox_tarefas_realizadas = tk.Listbox(frame_tarefas_realizadas, width=50)
+listbox_tarefas_realizadas.pack()
+
+# Verificar tarefas quando a janela é iniciada
+verificar_tarefas()
+
+# Verificar tarefas periodicamente
+window.after(1000 * 60, verificar_tarefas)
+
+# Iniciar a interface gráfica
+window.mainloop()
