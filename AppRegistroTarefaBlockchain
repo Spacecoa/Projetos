@@ -1,7 +1,7 @@
 import sys
 import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, \
-    QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox, QTextEdit
+    QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox, QTextEdit, QDialog
 from PyQt5.QtCore import QTimer, QRect, Qt, QPropertyAnimation, pyqtProperty, pyqtSignal
 from PyQt5.QtWidgets import QListWidgetItem
 
@@ -35,6 +35,15 @@ class Blockchain:
     def get_latest_block(self):
         return self.chain[-1] if self.chain else None
 
+class Transaction:
+    def __init__(self, sender, recipient, amount):
+        self.sender = sender
+        self.recipient = recipient
+        self.amount = amount
+        self.timestamp = time.strftime("%Y-%m-%d %H:%M")
+
+    def __str__(self):
+        return f"{self.sender} -> {self.recipient}: {self.amount} TaskCoins at {self.timestamp}"
 
 class ConfirmationBox(QLabel):
     animationFinished = pyqtSignal()
@@ -92,6 +101,16 @@ class MainWindow(QMainWindow):
         self.confirmation_box = ConfirmationBox()
         self.layout.addWidget(self.confirmation_box)
 
+        self.taskcoin_balance = 0  # Saldo de TaskCoins do usuário
+        self.label_taskcoin_balance = QLabel("TaskCoins: 0")  # Rótulo para exibir o saldo
+        self.layout.addWidget(self.label_taskcoin_balance)  # Adicionando o rótulo ao layout principal
+        self.taskcoin_transactions = []  # Lista de transações de TaskCoins
+
+        button_show_transactions = QPushButton("Histórico de Transações", self)
+        button_show_transactions.clicked.connect(self.show_taskcoin_transactions)
+        self.layout.addWidget(button_show_transactions)
+
+
     def adicionar_tarefa(self):
         tarefa = self.entry_tarefa.text()
         data = self.entry_data.text()
@@ -118,9 +137,17 @@ class MainWindow(QMainWindow):
                 self.listbox_tarefas.takeItem(index)
                 self.create_completed_task_checkbox(tarefa_realizada)
                 self.add_completed_block_to_blockchain(tarefa_realizada)
+                self.taskcoin_balance += 1  # Adicionar 1 TaskCoin ao saldo do usuário
+                self.label_taskcoin_balance.setText(f"TaskCoins: {self.taskcoin_balance}")
+                transaction = f"Received 1 TaskCoin for completing task: {tarefa_realizada}"
+                self.taskcoin_transactions.append(transaction)  # Adicionar a transação à lista de transações
             else:
-                self.show_warning("Tarefa não concluída",
-                                  "Marque o checkbox da tarefa antes de marcá-la como concluída.")
+                self.show_warning("Tarefa não concluída", "Marque o checkbox da tarefa antes de marcá-la como concluída.")
+
+    def update_taskcoin_balance(self):
+        # Atualizar o saldo de TaskCoins exibido na interface do usuário
+        self.taskcoin_balance = sum(transaction.amount for transaction in self.taskcoin_transactions)
+        self.label_taskcoin_balance.setText(f"TaskCoins: {self.taskcoin_balance}")
 
     def verificar_tarefas(self):
         agora = time.strftime("%Y-%m-%d %H:%M")
@@ -157,6 +184,7 @@ class MainWindow(QMainWindow):
         layout_adicionar.addWidget(label_hora)
         layout_adicionar.addWidget(self.entry_hora)
         layout_adicionar.addWidget(button_adicionar)
+
 
         self.layout.addWidget(frame_adicionar)
 
@@ -215,6 +243,17 @@ class MainWindow(QMainWindow):
         self.blockchain.add_completed_block(block)
         self.blockchain_widget.update_blockchain()
 
+    def show_taskcoin_transactions(self):
+        if self.taskcoin_transactions:
+            transaction_text = "\n".join(self.taskcoin_transactions)
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Histórico de Transações de TaskCoin")
+            layout = QVBoxLayout(dialog)
+            label = QLabel(transaction_text)
+            layout.addWidget(label)
+            dialog.exec_()
+        else:
+            QMessageBox.information(self, "Histórico de Transações de TaskCoin", "Nenhuma transação encontrada.")
 
 def verify_tasks(self):
     self.verificar_tarefas()
@@ -230,4 +269,3 @@ if __name__ == "__main__":
     QTimer.singleShot(0, main_window.verificar_tarefas)  # Iniciar a verificação de tarefas
 
     app.exec_()
-
