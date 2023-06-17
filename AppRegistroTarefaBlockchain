@@ -1,9 +1,39 @@
 import sys
 import time
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, \
-    QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox
+    QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox, QTextEdit
 from PyQt5.QtCore import QTimer, QRect, Qt, QPropertyAnimation, pyqtProperty, pyqtSignal
 from PyQt5.QtWidgets import QListWidgetItem
+
+from hashlib import sha256
+
+
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = data
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        data = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}".encode()
+        return sha256(data).hexdigest()
+
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.completed_blocks = []
+
+    def add_block(self, block):
+        self.chain.append(block)
+
+    def add_completed_block(self, block):
+        self.completed_blocks.append(block)
+
+    def get_latest_block(self):
+        return self.chain[-1] if self.chain else None
 
 
 class ConfirmationBox(QLabel):
@@ -13,7 +43,6 @@ class ConfirmationBox(QLabel):
         super().__init__(parent)
         self.setGeometry(0, 0, 0, 0)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("background-color: #000000;")
         self.animation = QPropertyAnimation(self, b"geometry")
         self.animation.setStartValue(QRect(0, 0, 0, 0))
         self.animation.setEndValue(QRect(100, 100, 200, 100))
@@ -25,6 +54,26 @@ class ConfirmationBox(QLabel):
     def resetAnimation(self):
         self.setGeometry(0, 0, 0, 0)
 
+
+class BlockchainWidget(QWidget):
+    def __init__(self, blockchain):
+        super().__init__()
+        self.blockchain = blockchain
+        self.layout = QVBoxLayout(self)
+        self.label_title = QLabel("Blockchain")
+        self.text_edit = QTextEdit()
+        self.text_edit.setReadOnly(True)
+        self.layout.addWidget(self.label_title)
+        self.layout.addWidget(self.text_edit)
+
+    def update_blockchain(self):
+        self.text_edit.clear()
+        for block in self.blockchain.chain:
+            block_info = f"Index: {block.index}\nTimestamp: {block.timestamp}\nData: {block.data}\n" \
+                         f"Hash: {block.hash}\nPrevious Hash: {block.previous_hash}\n\n"
+            self.text_edit.insertPlainText(block_info)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -35,11 +84,13 @@ class MainWindow(QMainWindow):
         self.central_widget.setLayout(self.layout)
         self.minhas_tarefas = []  # Lista de tarefas
         self.tarefas_realizadas = []  # Lista de tarefas realizadas
+        self.blockchain = Blockchain()
         self.create_task_widgets()
         self.create_task_list_widgets()
         self.create_completed_tasks_list_widgets()
+        self.create_blockchain_widget()
         self.confirmation_box = ConfirmationBox()
-        self.layout.addWidget(self.confirmation_box)  
+        self.layout.addWidget(self.confirmation_box)
 
     def adicionar_tarefa(self):
         tarefa = self.entry_tarefa.text()
@@ -67,11 +118,16 @@ class MainWindow(QMainWindow):
         if index >= 0:
             item = self.listbox_tarefas.item(index)
             checkbox = self.listbox_tarefas.itemWidget(item)
-            tarefa_realizada = checkbox.text()
-            self.minhas_tarefas.remove(tarefa_realizada)
-            self.tarefas_realizadas.append(tarefa_realizada)
-            self.listbox_tarefas.takeItem(index)
-            self.create_completed_task_checkbox(tarefa_realizada)
+            if checkbox.isChecked():
+                tarefa_realizada = checkbox.text()
+                self.minhas_tarefas.remove(tarefa_realizada)
+                self.tarefas_realizadas.append(tarefa_realizada)
+                self.listbox_tarefas.takeItem(index)
+                self.create_completed_task_checkbox(tarefa_realizada)
+                self.add_completed_block_to_blockchain(tarefa_realizada)
+            else:
+                self.show_warning("Tarefa não concluída",
+                                  "Marque o checkbox da tarefa antes de marcá-la como concluída.")
 
     def verificar_tarefas(self):
         agora = time.strftime("%Y-%m-%d %H:%M")
@@ -157,9 +213,23 @@ class MainWindow(QMainWindow):
         item.setSizeHint(checkbox.sizeHint())
         self.listbox_tarefas.setItemWidget(item, checkbox)
 
+    def create_blockchain_widget(self):
+        self.blockchain_widget = BlockchainWidget(self.blockchain)
+        self.layout.addWidget(self.blockchain_widget)
+
+    def add_completed_block_to_blockchain(self, data):
+        latest_block = self.blockchain.get_latest_block()
+        previous_hash = latest_block.hash if latest_block else None
+        block = Block(len(self.blockchain.chain), time.strftime("%Y-%m-%d %H:%M"), data, previous_hash)
+        self.blockchain.add_block(block)
+        self.blockchain.add_completed_block(block)
+        self.blockchain_widget.update_blockchain()
+
+
 def verify_tasks(self):
-        self.verificar_tarefas()
-        QTimer.singleShot(1000 * 60, self.verify_tasks)  # Verificar tarefas periodicamente
+    self.verificar_tarefas()
+    QTimer.singleShot(1000 * 60, self.verify_tasks)  # Verificar tarefas periodicamente
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
