@@ -106,13 +106,6 @@ class MainWindow(QMainWindow):
         else:
             self.show_warning("Campos Vazios", "Por favor, preencha todos os campos.")
 
-    def deletar_tarefa(self):
-        index = self.listbox_tarefas.currentRow()
-        if index >= 0:
-            tarefa_deletada = self.listbox_tarefas.item(index).text()
-            self.minhas_tarefas.remove(tarefa_deletada)
-            self.listbox_tarefas.takeItem(index)
-
     def tarefa_realizada(self):
         index = self.listbox_tarefas.currentRow()
         if index >= 0:
@@ -173,8 +166,6 @@ class MainWindow(QMainWindow):
 
         label_tarefas = QLabel("Minhas Tarefas:")
         self.listbox_tarefas = QListWidget()
-        button_deletar = QPushButton("Deletar")
-        button_deletar.clicked.connect(self.deletar_tarefa)
         button_realizada = QPushButton("Tarefa Realizada")
         button_realizada.clicked.connect(self.tarefa_realizada)
 
@@ -182,7 +173,6 @@ class MainWindow(QMainWindow):
         layout_tarefas.addWidget(self.listbox_tarefas)
 
         layout_button = QHBoxLayout()
-        layout_button.addWidget(button_deletar)
         layout_button.addWidget(button_realizada)
 
         layout_tarefas.addLayout(layout_button)
@@ -240,3 +230,4 @@ if __name__ == "__main__":
     QTimer.singleShot(0, main_window.verificar_tarefas)  # Iniciar a verificação de tarefas
 
     app.exec_()
+
