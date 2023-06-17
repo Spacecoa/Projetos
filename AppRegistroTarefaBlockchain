@@ -1,5 +1,6 @@
 import sys
 import time
+import re
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, \
     QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox, QTextEdit, QDialog
 from PyQt5.QtCore import QTimer, QRect, Qt, QPropertyAnimation, pyqtProperty, pyqtSignal
@@ -25,6 +26,27 @@ class Blockchain:
     def __init__(self):
         self.chain = []
         self.completed_blocks = []
+    
+    def is_block_valid(self, block):
+        # Verificar se o hash do bloco está correto
+        if block.hash != block.calculate_hash():
+            return False
+
+        # Verificar se o índice do bloco está correto
+        if block.index != len(self.chain):
+            return False
+
+        # Verificar se o bloco anterior está correto
+        if block.index > 0 and block.previous_hash != self.chain[block.index - 1].hash:
+            return False
+
+        return True
+    
+    def add_block(self, block):
+        if self.is_block_valid(block):
+            self.chain.append(block)
+        else:
+            print("Bloco inválido. Não pode ser adicionado à cadeia.")
 
     def add_block(self, block):
         self.chain.append(block)
@@ -62,7 +84,6 @@ class ConfirmationBox(QLabel):
 
     def resetAnimation(self):
         self.setGeometry(0, 0, 0, 0)
-
 
 class BlockchainWidget(QWidget):
     def __init__(self, blockchain):
@@ -112,19 +133,35 @@ class MainWindow(QMainWindow):
 
 
     def adicionar_tarefa(self):
-        tarefa = self.entry_tarefa.text()
-        data = self.entry_data.text()
-        hora = self.entry_hora.text()
-        if tarefa != "" and data != "" and hora != "":
+        try:
+            tarefa = self.entry_tarefa.text()
+            data = self.entry_data.text()
+            hora = self.entry_hora.text()
+
+            # Verificar se os campos estão vazios
+            if not tarefa or not data or not hora:
+                raise ValueError("Por favor, preencha todos os campos.")
+
+            # Verificar formato de data e hora usando expressões regulares
+            if not re.match(r"\d{2}/\d{2}/\d{4}", data):
+                raise ValueError("Formato de data inválido. Use o formato dd/mm/aaaa.")
+            if not re.match(r"\d{2}:\d{2}", hora):
+                raise ValueError("Formato de hora inválido. Use o formato hh:mm.")
+
             tarefa_com_data_hora = f"{tarefa} (Data: {data}, Hora: {hora})"
+            if tarefa_com_data_hora in self.minhas_tarefas:
+                raise ValueError("Tarefa já foi adicionada.")
+
             self.minhas_tarefas.append(tarefa_com_data_hora)
             self.create_task_with_checkbox(tarefa_com_data_hora)
+
             self.entry_tarefa.clear()
             self.entry_data.clear()
             self.entry_hora.clear()
-        else:
-            self.show_warning("Campos Vazios", "Por favor, preencha todos os campos.")
 
+        except ValueError as e:
+            QMessageBox.warning(self, "Erro ao adicionar tarefa", str(e))
+    
     def tarefa_realizada(self):
         index = self.listbox_tarefas.currentRow()
         if index >= 0:
@@ -239,9 +276,16 @@ class MainWindow(QMainWindow):
         latest_block = self.blockchain.get_latest_block()
         previous_hash = latest_block.hash if latest_block else None
         block = Block(len(self.blockchain.chain), time.strftime("%Y-%m-%d %H:%M"), data, previous_hash)
+        
+        # Chamada para adicionar o bloco usando o método add_block
         self.blockchain.add_block(block)
+        
         self.blockchain.add_completed_block(block)
         self.blockchain_widget.update_blockchain()
+
+        # Exibir mensagem de confirmação
+        message = f"Bloco adicionado:\nÍndice: {block.index}\nHash: {block.hash}"
+        QMessageBox.information(self, "Bloco Adicionado", message)
 
     def show_taskcoin_transactions(self):
         if self.taskcoin_transactions:
