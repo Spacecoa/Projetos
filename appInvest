@@ -1,0 +1,153 @@
+import tkinter as tk
+import sqlite3
+
+class Investimento:
+    def __init__(self, nome, valor_investido):
+        self.nome = nome
+        self.valor_investido = valor_investido
+        self.valor_atual = valor_investido
+        self.valor_anterior = valor_investido
+
+class AplicativoInvestimentos:
+    def __init__(self):
+        self.investimentos = []
+        self.conexao = sqlite3.connect('investimentos.db')
+        self.criar_tabela_lucros_prejuizos()
+
+    def criar_tabela_lucros_prejuizos(self):
+        cursor = self.conexao.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS lucros_prejuizos (
+                investimento TEXT,
+                lucro_prejuizo REAL
+            )
+        ''')
+        self.conexao.commit()
+
+    def adicionar_investimento(self, investimento):
+        self.investimentos.append(investimento)
+
+    def calcular_lucro_prejuizo(self, investimento):
+        cursor = self.conexao.cursor()
+        cursor.execute("SELECT lucro_prejuizo FROM lucros_prejuizos WHERE investimento = ?", (investimento.nome,))
+        resultado = cursor.fetchone()
+
+        if resultado:
+            lucro_prejuizo_anterior = resultado[0]
+        else:
+            lucro_prejuizo_anterior = 0
+
+        lucro_prejuizo = investimento.valor_atual - investimento.valor_anterior + lucro_prejuizo_anterior
+
+        cursor.execute("REPLACE INTO lucros_prejuizos VALUES (?, ?)", (investimento.nome, lucro_prejuizo))
+        self.conexao.commit()
+
+        investimento.valor_anterior = investimento.valor_atual
+
+        return lucro_prejuizo
+
+class InterfaceGrafica:
+    def __init__(self, aplicativo):
+        self.aplicativo = aplicativo
+
+        self.window = tk.Tk()
+        self.window.title("Aplicativo de Investimentos")
+        self.window.configure(bg="#F5F5F5")
+
+        self.frame_investimentos = tk.Frame(self.window, bg="#F5F5F5", padx=10, pady=10)
+        self.frame_investimentos.pack()
+
+        self.label_investimentos = tk.Label(self.frame_investimentos, text="Investimentos", font=("Arial", 14, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_investimentos.pack()
+
+        self.frame_lista = tk.Frame(self.frame_investimentos, bg="#F5F5F5")
+        self.frame_lista.pack()
+
+        self.lista_investimentos = tk.Listbox(self.frame_lista, width=40, height=10, font=("Arial", 12), bd=2, relief=tk.GROOVE)
+        self.lista_investimentos.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
+
+        self.scrollbar = tk.Scrollbar(self.frame_lista)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.lista_investimentos.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.lista_investimentos.yview)
+
+        self.frame_detalhes = tk.Frame(self.window, bg="#F5F5F5", padx=10, pady=10)
+        self.frame_detalhes.pack()
+
+        self.label_nome = tk.Label(self.frame_detalhes, text="Nome:", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_nome.pack(anchor=tk.W)
+
+        self.label_valor_investido = tk.Label(self.frame_detalhes, text="Valor Investido:", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_valor_investido.pack(anchor=tk.W)
+
+        self.label_valor_atual = tk.Label(self.frame_detalhes, text="Valor Atual:", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_valor_atual.pack(anchor=tk.W)
+
+        self.label_lucro = tk.Label(self.frame_detalhes, text="Lucro/Prejuízo:", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_lucro.pack(anchor=tk.W)
+
+        self.label_total_investido = tk.Label(self.window, text="Valor Total Investido: $0.00", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5")
+        self.label_total_investido.pack(pady=10)
+
+        self.entry_valor_atual = tk.Entry(self.frame_detalhes, font=("Arial", 12))
+        self.entry_valor_atual.pack(pady=10)
+
+        self.button_atualizar = tk.Button(self.frame_detalhes, text="Atualizar Valor", font=("Arial", 12, "bold"), fg="#333333", bg="#F5F5F5", command=self.atualizar_valor, bd=2, relief=tk.GROOVE)
+        self.button_atualizar.pack()
+
+        self.lista_investimentos.bind('<<ListboxSelect>>', self.mostrar_detalhes)
+
+        for investimento in aplicativo.investimentos:
+            self.lista_investimentos.insert(tk.END, investimento.nome)
+
+        self.atualizar_total_investido()
+
+        self.window.mainloop()
+
+    def mostrar_detalhes(self, event):
+        selecionado = self.lista_investimentos.curselection()
+        if selecionado:
+            indice = selecionado[0]
+            investimento = self.aplicativo.investimentos[indice]
+
+            self.label_nome.config(text="Nome: {}".format(investimento.nome))
+            self.label_valor_investido.config(text="Valor Investido: ${:.2f}".format(investimento.valor_investido))
+            self.label_valor_atual.config(text="Valor Atual: ${:.2f}".format(investimento.valor_atual))
+
+            lucro_prejuizo = self.aplicativo.calcular_lucro_prejuizo(investimento)
+            self.label_lucro.config(text="Lucro/Prejuízo: ${:.2f}".format(lucro_prejuizo))
+
+    def atualizar_valor(self):
+        selecionado = self.lista_investimentos.curselection()
+        if selecionado:
+            indice = selecionado[0]
+            investimento = self.aplicativo.investimentos[indice]
+
+            novo_valor = float(self.entry_valor_atual.get())
+            investimento.valor_atual = novo_valor
+
+            self.entry_valor_atual.delete(0, tk.END)
+
+            self.mostrar_detalhes(None)
+            self.atualizar_total_investido()
+
+    def atualizar_total_investido(self):
+        total_investido = sum(investimento.valor_investido for investimento in self.aplicativo.investimentos)
+        self.label_total_investido.config(text="Valor Total Investido: ${:.2f}".format(total_investido))
+
+# Exemplo de uso
+aplicativo = AplicativoInvestimentos()
+
+# Adicionando investimentos pré-definidos
+investimento1 = Investimento("IAG", 101)
+investimento2 = Investimento("VYFI", 147)
+investimento3 = Investimento("LENFI", 120)
+investimento4 = Investimento("ADA", 26)
+
+aplicativo.adicionar_investimento(investimento1)
+aplicativo.adicionar_investimento(investimento2)
+aplicativo.adicionar_investimento(investimento3)
+aplicativo.adicionar_investimento(investimento4)
+
+interface = InterfaceGrafica(aplicativo)
