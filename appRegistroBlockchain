@@ -1,0 +1,315 @@
+import sys
+import time
+import re
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, \
+    QLineEdit, QPushButton, QListWidget, QMessageBox, QCheckBox, QTextEdit, QDialog
+from PyQt5.QtCore import QTimer, QRect, Qt, QPropertyAnimation, pyqtProperty, pyqtSignal
+from PyQt5.QtWidgets import QListWidgetItem
+
+from hashlib import sha256
+
+
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = data
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        data = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}".encode()
+        return sha256(data).hexdigest()
+
+
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.completed_blocks = []
+    
+    def is_block_valid(self, block):
+        # Verificar se o hash do bloco está correto
+        if block.hash != block.calculate_hash():
+            return False
+
+        # Verificar se o índice do bloco está correto
+        if block.index != len(self.chain):
+            return False
+
+        # Verificar se o bloco anterior está correto
+        if block.index > 0 and block.previous_hash != self.chain[block.index - 1].hash:
+            return False
+
+        return True
+    
+    def add_block(self, block):
+        if self.is_block_valid(block):
+            self.chain.append(block)
+        else:
+            print("Bloco inválido. Não pode ser adicionado à cadeia.")
+
+    def add_block(self, block):
+        self.chain.append(block)
+
+    def add_completed_block(self, block):
+        self.completed_blocks.append(block)
+
+    def get_latest_block(self):
+        return self.chain[-1] if self.chain else None
+
+class Transaction:
+    def __init__(self, sender, recipient, amount):
+        self.sender = sender
+        self.recipient = recipient
+        self.amount = amount
+        self.timestamp = time.strftime("%Y-%m-%d %H:%M")
+
+    def __str__(self):
+        return f"{self.sender} -> {self.recipient}: {self.amount} TaskCoins at {self.timestamp}"
+
+class ConfirmationBox(QLabel):
+    animationFinished = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setGeometry(0, 0, 0, 0)
+        self.setAlignment(Qt.AlignCenter)
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setStartValue(QRect(0, 0, 0, 0))
+        self.animation.setEndValue(QRect(100, 100, 200, 100))
+        self.animation.finished.connect(self.animationFinished.emit)
+
+    def startAnimation(self):
+        self.animation.start()
+
+    def resetAnimation(self):
+        self.setGeometry(0, 0, 0, 0)
+
+class BlockchainWidget(QWidget):
+    def __init__(self, blockchain):
+        super().__init__()
+        self.blockchain = blockchain
+        self.layout = QVBoxLayout(self)
+        self.label_title = QLabel("Blockchain")
+        self.text_edit = QTextEdit()
+        self.text_edit.setReadOnly(True)
+        self.layout.addWidget(self.label_title)
+        self.layout.addWidget(self.text_edit)
+
+    def update_blockchain(self):
+        self.text_edit.clear()
+        for block in self.blockchain.chain:
+            block_info = f"Index: {block.index}\nTimestamp: {block.timestamp}\nData: {block.data}\n" \
+                         f"Hash: {block.hash}\nPrevious Hash: {block.previous_hash}\n\n"
+            self.text_edit.insertPlainText(block_info)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Aplicativo de Tarefas")
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout()
+        self.central_widget.setLayout(self.layout)
+        self.minhas_tarefas = []  # Lista de tarefas
+        self.tarefas_realizadas = []  # Lista de tarefas realizadas
+        self.blockchain = Blockchain()
+        self.create_task_widgets()
+        self.create_task_list_widgets()
+        self.create_completed_tasks_list_widgets()
+        self.create_blockchain_widget()
+        self.confirmation_box = ConfirmationBox()
+        self.layout.addWidget(self.confirmation_box)
+
+        self.taskcoin_balance = 0  # Saldo de TaskCoins do usuário
+        self.label_taskcoin_balance = QLabel("TaskCoins: 0")  # Rótulo para exibir o saldo
+        self.layout.addWidget(self.label_taskcoin_balance)  # Adicionando o rótulo ao layout principal
+        self.taskcoin_transactions = []  # Lista de transações de TaskCoins
+
+        button_show_transactions = QPushButton("Histórico de Transações", self)
+        button_show_transactions.clicked.connect(self.show_taskcoin_transactions)
+        self.layout.addWidget(button_show_transactions)
+
+
+    def adicionar_tarefa(self):
+        try:
+            tarefa = self.entry_tarefa.text()
+            data = self.entry_data.text()
+            hora = self.entry_hora.text()
+
+            # Verificar se os campos estão vazios
+            if not tarefa or not data or not hora:
+                raise ValueError("Por favor, preencha todos os campos.")
+
+            # Verificar formato de data e hora usando expressões regulares
+            if not re.match(r"\d{2}/\d{2}/\d{4}", data):
+                raise ValueError("Formato de data inválido. Use o formato dd/mm/aaaa.")
+            if not re.match(r"\d{2}:\d{2}", hora):
+                raise ValueError("Formato de hora inválido. Use o formato hh:mm.")
+
+            tarefa_com_data_hora = f"{tarefa} (Data: {data}, Hora: {hora})"
+            if tarefa_com_data_hora in self.minhas_tarefas:
+                raise ValueError("Tarefa já foi adicionada.")
+
+            self.minhas_tarefas.append(tarefa_com_data_hora)
+            self.create_task_with_checkbox(tarefa_com_data_hora)
+
+            self.entry_tarefa.clear()
+            self.entry_data.clear()
+            self.entry_hora.clear()
+
+        except ValueError as e:
+            QMessageBox.warning(self, "Erro ao adicionar tarefa", str(e))
+    
+    def tarefa_realizada(self):
+        index = self.listbox_tarefas.currentRow()
+        if index >= 0:
+            item = self.listbox_tarefas.item(index)
+            checkbox = self.listbox_tarefas.itemWidget(item)
+            if checkbox.isChecked():
+                tarefa_realizada = checkbox.text()
+                self.minhas_tarefas.remove(tarefa_realizada)
+                self.tarefas_realizadas.append(tarefa_realizada)
+                self.listbox_tarefas.takeItem(index)
+                self.create_completed_task_checkbox(tarefa_realizada)
+                self.add_completed_block_to_blockchain(tarefa_realizada)
+                self.taskcoin_balance += 1  # Adicionar 1 TaskCoin ao saldo do usuário
+                self.label_taskcoin_balance.setText(f"TaskCoins: {self.taskcoin_balance}")
+                transaction = f"Received 1 TaskCoin for completing task: {tarefa_realizada}"
+                self.taskcoin_transactions.append(transaction)  # Adicionar a transação à lista de transações
+            else:
+                self.show_warning("Tarefa não concluída", "Marque o checkbox da tarefa antes de marcá-la como concluída.")
+
+    def update_taskcoin_balance(self):
+        # Atualizar o saldo de TaskCoins exibido na interface do usuário
+        self.taskcoin_balance = sum(transaction.amount for transaction in self.taskcoin_transactions)
+        self.label_taskcoin_balance.setText(f"TaskCoins: {self.taskcoin_balance}")
+
+    def verificar_tarefas(self):
+        agora = time.strftime("%Y-%m-%d %H:%M")
+        for tarefa in self.minhas_tarefas:
+            data_hora_tarefa = tarefa.split("(Data: ")[1].split(", Hora: ")[0]
+            hora_tarefa = tarefa.split("Hora: ")[1][:-1]
+            data_hora_tarefa_completa = f"{data_hora_tarefa} {hora_tarefa}"
+            if data_hora_tarefa_completa == agora:
+                QMessageBox.information(self, "Tarefa", f"É hora de fazer a seguinte tarefa:\n\n{tarefa}")
+
+    def show_warning(self, title, message):
+        QMessageBox.warning(self, title, message)
+
+    def show_info(self, title, message):
+        QMessageBox.information(self, title, message)
+
+    def create_task_widgets(self):
+        frame_adicionar = QWidget()
+        layout_adicionar = QVBoxLayout(frame_adicionar)
+
+        label_tarefa = QLabel("Tarefa:")
+        self.entry_tarefa = QLineEdit()
+        label_data = QLabel("Data:")
+        self.entry_data = QLineEdit()
+        label_hora = QLabel("Hora:")
+        self.entry_hora = QLineEdit()
+        button_adicionar = QPushButton("Adicionar")
+        button_adicionar.clicked.connect(self.adicionar_tarefa)
+
+        layout_adicionar.addWidget(label_tarefa)
+        layout_adicionar.addWidget(self.entry_tarefa)
+        layout_adicionar.addWidget(label_data)
+        layout_adicionar.addWidget(self.entry_data)
+        layout_adicionar.addWidget(label_hora)
+        layout_adicionar.addWidget(self.entry_hora)
+        layout_adicionar.addWidget(button_adicionar)
+
+
+        self.layout.addWidget(frame_adicionar)
+
+    def create_task_list_widgets(self):
+        frame_tarefas = QWidget()
+        layout_tarefas = QVBoxLayout(frame_tarefas)
+
+        label_tarefas = QLabel("Minhas Tarefas:")
+        self.listbox_tarefas = QListWidget()
+        button_realizada = QPushButton("Tarefa Realizada")
+        button_realizada.clicked.connect(self.tarefa_realizada)
+
+        layout_tarefas.addWidget(label_tarefas)
+        layout_tarefas.addWidget(self.listbox_tarefas)
+
+        layout_button = QHBoxLayout()
+        layout_button.addWidget(button_realizada)
+
+        layout_tarefas.addLayout(layout_button)
+
+        self.layout.addWidget(frame_tarefas)
+
+    def create_completed_tasks_list_widgets(self):
+        frame_tarefas_realizadas = QWidget()
+        layout_tarefas_realizadas = QVBoxLayout(frame_tarefas_realizadas)
+
+        label_tarefas_realizadas = QLabel("Tarefas Realizadas:")
+        self.listbox_tarefas_realizadas = QListWidget()
+
+        layout_tarefas_realizadas.addWidget(label_tarefas_realizadas)
+        layout_tarefas_realizadas.addWidget(self.listbox_tarefas_realizadas)
+
+        self.layout.addWidget(frame_tarefas_realizadas)
+
+    def create_completed_task_checkbox(self, tarefa):
+        checkbox = QCheckBox(tarefa)
+        checkbox.setStyleSheet("QCheckBox { font-size: 14px; }")
+        self.listbox_tarefas_realizadas.addItem(checkbox.text())
+
+    def create_task_with_checkbox(self, tarefa):
+        checkbox = QCheckBox(tarefa)
+        checkbox.setStyleSheet("QCheckBox { font-size: 14px; }")
+        item = QListWidgetItem(self.listbox_tarefas)
+        item.setSizeHint(checkbox.sizeHint())
+        self.listbox_tarefas.setItemWidget(item, checkbox)
+
+    def create_blockchain_widget(self):
+        self.blockchain_widget = BlockchainWidget(self.blockchain)
+        self.layout.addWidget(self.blockchain_widget)
+
+    def add_completed_block_to_blockchain(self, data):
+        latest_block = self.blockchain.get_latest_block()
+        previous_hash = latest_block.hash if latest_block else None
+        block = Block(len(self.blockchain.chain), time.strftime("%Y-%m-%d %H:%M"), data, previous_hash)
+        
+        # Chamada para adicionar o bloco usando o método add_block
+        self.blockchain.add_block(block)
+        
+        self.blockchain.add_completed_block(block)
+        self.blockchain_widget.update_blockchain()
+
+        # Exibir mensagem de confirmação
+        message = f"Bloco adicionado:\nÍndice: {block.index}\nHash: {block.hash}"
+        QMessageBox.information(self, "Bloco Adicionado", message)
+
+    def show_taskcoin_transactions(self):
+        if self.taskcoin_transactions:
+            transaction_text = "\n".join(self.taskcoin_transactions)
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Histórico de Transações de TaskCoin")
+            layout = QVBoxLayout(dialog)
+            label = QLabel(transaction_text)
+            layout.addWidget(label)
+            dialog.exec_()
+        else:
+            QMessageBox.information(self, "Histórico de Transações de TaskCoin", "Nenhuma transação encontrada.")
+
+def verify_tasks(self):
+    self.verificar_tarefas()
+    QTimer.singleShot(1000 * 60, self.verify_tasks)  # Verificar tarefas periodicamente
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+
+    main_window = MainWindow()
+    main_window.show()
+
+    QTimer.singleShot(0, main_window.verificar_tarefas)  # Iniciar a verificação de tarefas
+
+    app.exec_()
