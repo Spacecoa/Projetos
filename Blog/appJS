@@ -1,0 +1,61 @@
+const posts = [
+];
+
+// Função para criar elementos HTML para cada post
+function criarPostElement(post) {
+    const postElement = document.createElement('div');
+    postElement.classList.add('blog-post');
+
+    const titleElement = document.createElement('h2');
+    titleElement.classList.add('blog-title');
+    titleElement.textContent = post.titulo;
+
+    const authorElement = document.createElement('p');
+    authorElement.classList.add('blog-author');
+    authorElement.textContent = `Autor: ${post.autor}`;
+
+    const dateElement = document.createElement('p');
+    dateElement.classList.add('blog-author');
+    dateElement.textContent = `Data de publicação: ${post.data_publicacao}`;
+
+    const contentElement = document.createElement('p');
+    contentElement.classList.add('blog-content');
+    contentElement.textContent = post.conteudo;
+
+    postElement.appendChild(titleElement);
+    postElement.appendChild(authorElement);
+    postElement.appendChild(dateElement);
+    postElement.appendChild(contentElement);
+
+    return postElement;
+}
+
+// Função para exibir as postagens no blog
+function exibirPosts() {
+    const blogContainer = document.getElementById('blog-container');
+    posts.forEach(post => {
+        const postElement = criarPostElement(post);
+        blogContainer.appendChild(postElement);
+    });
+}
+function criarPostagem() {
+    const titulo = document.getElementById('titulo').value;
+    const conteudo = document.getElementById('conteudo').value;
+    const autor = document.getElementById('autor').value;
+    
+    if (titulo && conteudo && autor) {
+        const novaPostagem = {
+            titulo: titulo,
+            conteudo: conteudo,
+            autor: autor,
+            data_publicacao: new Date().toLocaleDateString()
+        };
+        
+        posts.push(novaPostagem);
+        exibirPosts();
+    }
+}
+
+
+// Chamar a função para exibir as postagens
+exibirPosts();
