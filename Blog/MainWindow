@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style2.css">
+    <title>Blog</title>
+</head>
+<body>
+    <header>
+        <h1>Bem-vindo ao Meu Blog</h1>
+    </header>
+    <div id="auth-buttons">
+        <button onclick="window.location.href='login.html'">Login</button>
+        <button onclick="window.location.href='cadastro.html'">Registro</button>
+    </div>
+    <div id="post-form">
+        <h2>Criar Nova Postagem</h2>
+        <input type="text" id="titulo" placeholder="Título">
+        <textarea id="conteudo" placeholder="Conteúdo"></textarea>
+        <input type="text" id="autor" placeholder="Autor">
+        <button onclick="criarPostagem()">Publicar</button>
+    </div>
+    <div id="blog-container">
+        <!-- As postagens serão exibidas aqui -->
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
